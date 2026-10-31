@@ -20,8 +20,8 @@ def getMetafor(p={}):
 
 #GEOMETRY:
 p= {} 
-p['GeometryHypothesis'] = "PLANESTRAIN" #PLANESTRESS or "PLANESTRAIN" ; you need to implement PLANESTRAIN yourself! 
-p['EdgeSize'] = 80                      #Length of the cube
+p['GeometryHypothesis'] = "PLANESTRESS" #PLANESTRESS or "PLANESTRAIN" ; you need to implement PLANESTRAIN yourself! 
+p['EdgeSize'] = 80                     #Length of the cube
 #MESH:    
 p['Nx'] = 1                             #Nb of elements in the x direction
 p['Ny'] = 1                             #Nb of elements in the y direction
@@ -128,26 +128,90 @@ TransfiniteMesher3D(volumeset(1)).execute(True)
 
 ############################################################
 # BEGIN OF DEFINITION OF THE MATERIALS AND MATERIAL LAWS   #
-############################################################
-#MATERIAL:   
-Density = 7.85E-9                 #Density
-Young = 20.5E4                    #Young's Modulus
-Nu = 0.3                          #Poisson ratio   
-    
-materset = domain.getMaterialSet()                              
-material1 = materset.define (1, EvpIsoHHypoMaterial) #Create material number 1 as Elasto-viscoplastic with Isotropic hardening 
-material1.put(MASS_DENSITY,    Density)   #Set Material parameters (see required parameters in the documentation)
-material1.put(ELASTIC_MODULUS, Young)     
-material1.put(POISSON_RATIO,   Nu)   
-material1.put(YIELD_NUM,1)  #Number of the hardening law used
+############################################################ 
 
-SigmaY_0 = 200.0            #Elastic limit of virgin material  
-h = 30000.0                 #Hardening parameter 
+Density = 7.85E-9                 # Density
+Young = 205E3                     # Young's Modulus
+Nu = 0.3                          # Poisson ratio
 
-lawset = domain.getMaterialLawSet() 
-lawset1 = lawset.define(1, LinearIsotropicHardening)  #Create law number 1 as Linear Isotropic hardening law 
-lawset1.put(IH_SIGEL,   SigmaY_0) #Set law parameters (see required parameters in the documentation)
-lawset1.put(IH_H,       h)
+# HARDENING MODEL SELECTION:
+HardeningModel = "PERFECTLY_PLASTIC"
+# Options: "PERFECTLY_PLASTIC", "ISOTROPIC", "KINEMATIC", "MIXED"
+
+SigmaY_0 = 200.0                  # Elastic limit of virgin material
+h = 30000.0                       # Total hardening parameter
+theta = 0.2
+
+h_i = theta * h                   # Isotropic hardening parameter
+h_k = (1 - theta) * h             # Kinematic hardening parameter
+
+
+# MATERIAL DEFINITION:
+materset = domain.getMaterialSet()
+
+if HardeningModel == "PERFECTLY_PLASTIC":
+    material_type = EvpIsoHHypoMaterial  # Material class for no hardening
+
+elif HardeningModel == "ISOTROPIC":
+    material_type = EvpIsoHHypoMaterial  # Material class for isotropic hardening
+
+elif HardeningModel == "KINEMATIC":
+    material_type = EvpMixtHHypoMaterial  # Material class for kinematic hardening
+
+elif HardeningModel == "MIXED":
+    material_type = EvpMixtHHypoMaterial  # Material class for mixed hardening
+
+else:
+    raise ValueError("Unknown hardening model: " + HardeningModel)
+
+material1 = materset.define(1, material_type)
+
+material1.put(MASS_DENSITY, Density)
+material1.put(ELASTIC_MODULUS, Young)
+material1.put(POISSON_RATIO, Nu)
+material1.put(YIELD_NUM, 1)
+
+
+# HARDENING LAW DEFINITION:
+lawset = domain.getMaterialLawSet()
+
+if HardeningModel == "PERFECTLY_PLASTIC":
+    lawset1 = lawset.define(1, LinearIsotropicHardening)
+    lawset1.put(IH_SIGEL, SigmaY_0)
+    lawset1.put(IH_H, 0.0)
+
+elif HardeningModel == "ISOTROPIC":
+    lawset1 = lawset.define(1, LinearIsotropicHardening)
+    lawset1.put(IH_SIGEL, SigmaY_0)
+    lawset1.put(IH_H, h)
+
+elif HardeningModel == "KINEMATIC":
+
+    # Yield stress law
+    lawset1 = lawset.define(1, LinearIsotropicHardening)
+    lawset1.put(IH_SIGEL, SigmaY_0)
+    lawset1.put(IH_H, 0.0)
+
+    # Kinematic hardening law
+    lawset2 = lawset.define(2, DruckerPragerKinematicHardening)
+    lawset2.put(KH_H, h)
+
+    # Association with the material
+    material1.put(KH_NUMS, [2])
+
+elif HardeningModel == "MIXED":
+    lawset1 = lawset.define(1, LinearIsotropicHardening)
+    lawset1.put(IH_SIGEL, SigmaY_0)
+    lawset1.put(IH_H, h_i)
+
+    # Kinematic hardening law
+    lawset2 = lawset.define(2, DruckerPragerKinematicHardening)
+    lawset2.put(KH_H, h_k)
+        
+    # Association with the material
+    material1.put(KH_NUMS, [2])
+
+
 
 
 ############################################################
@@ -186,9 +250,8 @@ elif p['GeometryHypothesis']=="PLANESTRAIN":
     loadingset.define(sideset(1),Field1D(TZ,RE),0.)                     
     loadingset.define(sideset(3),Field1D(TY,RE),0.)                     
     loadingset.define(sideset(6),Field1D(TX,RE),0.)
-    ###################################################################
-    # IMPLEMENT BOUNDARY CONDITION TO OBTAIN PLANE STRAIN STATE HERE  #
-    ###################################################################
+    # Plane strain condition
+    loadingset.define(sideset(2),Field1D(TZ,RE),0.)
     
 #7. LOADS
 #=============
@@ -196,9 +259,9 @@ elif p['GeometryHypothesis']=="PLANESTRAIN":
 #-------------------------------------------------
 
 #LOAD:                                                              
-Trac = 100.0                       #Traction
-Ncycle = 5                         #Number of cycles of loading/unloading
-Tcycle = 4.                        #Duration of one cycle
+Trac = 290                          #Traction [MPa]
+Ncycle = 4                         #Number of cycles of loading/unloading
+Tcycle = 10.                        #Duration of one cycle [s]
 
 fct = PieceWiseLinearFunction()
 for i in range (0,Ncycle):
