@@ -42,53 +42,53 @@ geometry.setDim3D()
 #----------
 pointset = geometry.getPointSet()                               
 
-pointset.define(1,0.,0.,0.)                                     
-pointset.define(2,p['EdgeSize'],0.,0.)
-pointset.define(3,p['EdgeSize'],p['EdgeSize'],0.)
-pointset.define(4,0.,p['EdgeSize'],0.)
-pointset.define(5,0.,0.,p['EdgeSize'])
-pointset.define(6,p['EdgeSize'],0.,p['EdgeSize'])
-pointset.define(7,p['EdgeSize'],p['EdgeSize'],p['EdgeSize'])
-pointset.define(8,0.,p['EdgeSize'],p['EdgeSize'])
+pointset.define(1,0.,0.,0.)                                         #         8_______________7 
+pointset.define(2,p['EdgeSize'],0.,0.)                              #         /.             /| 
+pointset.define(3,p['EdgeSize'],p['EdgeSize'],0.)                   #        / .            / | 
+pointset.define(4,0.,p['EdgeSize'],0.)                              #       /  .           /  |  
+pointset.define(5,0.,0.,p['EdgeSize'])                              #    4 /__ .__________/3  | 
+pointset.define(6,p['EdgeSize'],0.,p['EdgeSize'])                   #     |    .          |   |  
+pointset.define(7,p['EdgeSize'],p['EdgeSize'],p['EdgeSize'])        #     |   5...........|...|6  
+pointset.define(8,0.,p['EdgeSize'],p['EdgeSize'])                   #     |   .           |   /   
+                                                                    #     |  .            |  /       
+#2.2 Curves                                                         #     | .             | /           
+#-----------                                                        #     |.______________|/            
+curveset = geometry.getCurveSet()                                   #     1               2
 
-#2.2 Curves
-#-----------
-curveset = geometry.getCurveSet()                            
-
-curveset.add( Line( 1, pointset( 1), pointset(2) ))          
-curveset.add( Line( 2, pointset( 2), pointset(3) ))          
-curveset.add( Line( 3, pointset( 3), pointset(4) ))          
-curveset.add( Line( 4, pointset( 4), pointset(1) ))          
-curveset.add( Line( 5, pointset( 1), pointset(5) ))          
-curveset.add( Line( 6, pointset( 2), pointset(6) ))          
-curveset.add( Line( 7, pointset( 3), pointset(7) ))          
-curveset.add( Line( 8, pointset( 4), pointset(8) ))          
-curveset.add( Line( 9, pointset( 5), pointset(6) ))          
-curveset.add( Line( 10, pointset( 6), pointset(7) ))         
-curveset.add( Line( 11, pointset( 7), pointset(8) ))          
-curveset.add( Line( 12, pointset( 8), pointset(5) ))          
-
+curveset.add( Line( 1, pointset( 1), pointset(2) ))                 #                
+curveset.add( Line( 2, pointset( 2), pointset(3) ))                 #          _______________
+curveset.add( Line( 3, pointset( 3), pointset(4) ))                 #         /.     11      /|
+curveset.add( Line( 4, pointset( 4), pointset(1) ))                 #       8/ .           7/ |
+curveset.add( Line( 5, pointset( 1), pointset(5) ))                 #       /  .12         /  |10
+curveset.add( Line( 6, pointset( 2), pointset(6) ))                 #      /__ .____3_____/   |
+curveset.add( Line( 7, pointset( 3), pointset(7) ))                 #     |    .          |   |
+curveset.add( Line( 8, pointset( 4), pointset(8) ))                 #     |    ...........|...| 
+curveset.add( Line( 9, pointset( 5), pointset(6) ))                 #    4|   .      9    |2  /
+curveset.add( Line( 10, pointset( 6), pointset(7) ))                #     |  .5           |  /6
+curveset.add( Line( 11, pointset( 7), pointset(8) ))                #     | .             | /
+curveset.add( Line( 12, pointset( 8), pointset(5) ))                #     |.______________|/
+                                                                    #             1         
 #2.3 Wires
 #------------
 wireset = geometry.getWireSet()                              
 
-wireset.add( Wire(1, [curveset(1), curveset(2), curveset(3), curveset(4)]) ) 
-wireset.add( Wire(2, [curveset(9), curveset(10), curveset(11), curveset(12)]) ) 
-wireset.add( Wire(3, [curveset(1), curveset(6), curveset(9), curveset(5)]) ) 
-wireset.add( Wire(4, [curveset(2), curveset(7), curveset(10), curveset(6)]) ) 
-wireset.add( Wire(5, [curveset(3), curveset(7), curveset(11), curveset(8)]) ) 
-wireset.add( Wire(6, [curveset(4), curveset(8), curveset(12), curveset(5)]) ) 
+wireset.add( Wire(1, [curveset(1), curveset(2), curveset(3), curveset(4)]) )        # Front
+wireset.add( Wire(2, [curveset(9), curveset(10), curveset(11), curveset(12)]) )     # Back
+wireset.add( Wire(3, [curveset(1), curveset(6), curveset(9), curveset(5)]) )        # Bottom
+wireset.add( Wire(4, [curveset(2), curveset(7), curveset(10), curveset(6)]) )       # Right
+wireset.add( Wire(5, [curveset(3), curveset(7), curveset(11), curveset(8)]) )       # Top
+wireset.add( Wire(6, [curveset(4), curveset(8), curveset(12), curveset(5)]) )       # Left
 
 #2.4 Sides
 #-------------------
 sideset = geometry.getSideSet()                              
 
-sideset.add( Side(1,[wireset(1)]) )                          
-sideset.add( Side(2,[wireset(2)]) )                          
-sideset.add( Side(3,[wireset(3)]) )                          
-sideset.add( Side(4,[wireset(4)]) )                          
-sideset.add( Side(5,[wireset(5)]) )                          
-sideset.add( Side(6,[wireset(6)]) )                          
+sideset.add( Side(1,[wireset(1)]) )     # Front                          
+sideset.add( Side(2,[wireset(2)]) )     # Back                     
+sideset.add( Side(3,[wireset(3)]) )     # Bottom                     
+sideset.add( Side(4,[wireset(4)]) )     # Right                     
+sideset.add( Side(5,[wireset(5)]) )     # Top                     
+sideset.add( Side(6,[wireset(6)]) )     # Left                     
 
 #2.5 Skins
 #-------------------
@@ -130,36 +130,37 @@ TransfiniteMesher3D(volumeset(1)).execute(True)
 # BEGIN OF DEFINITION OF THE MATERIALS AND MATERIAL LAWS   #
 ############################################################ 
 
-Density = 7.85E-9                 # Density
-Young = 205E3                     # Young's Modulus
-Nu = 0.3                          # Poisson ratio
+Density = 7.85E-9                   # Density
+Young = 205E3                       # Young's Modulus
+Nu = 0.3                            # Poisson ratio
 
 # HARDENING MODEL SELECTION:
 HardeningModel = "PERFECTLY_PLASTIC"
 # Options: "PERFECTLY_PLASTIC", "ISOTROPIC", "KINEMATIC", "MIXED"
 
-SigmaY_0 = 200.0                  # Elastic limit of virgin material
-h = 30000.0                       # Total hardening parameter
-theta = 0.2
+SigmaY_0 = 200.0                    # Elastic limit of virgin material
+SigmaY_inf = 300.0                  # Saturation stress for isotropic hardening
+h = 30000.0                         # Total hardening parameter
+theta = 0.2                         # Partition coefficient for mixed hardening (0 <= theta <= 1)
 
-h_i = theta * h                   # Isotropic hardening parameter
-h_k = (1 - theta) * h             # Kinematic hardening parameter
+h_i = theta * h                     # Isotropic hardening parameter
+h_k = (1 - theta) * h               # Kinematic hardening parameter
 
 
 # MATERIAL DEFINITION:
 materset = domain.getMaterialSet()
 
 if HardeningModel == "PERFECTLY_PLASTIC":
-    material_type = EvpIsoHHypoMaterial  # Material class for no hardening
+    material_type = EvpIsoHHypoMaterial     # Material class for no hardening
 
 elif HardeningModel == "ISOTROPIC":
-    material_type = EvpIsoHHypoMaterial  # Material class for isotropic hardening
+    material_type = EvpIsoHHypoMaterial     # Material class for isotropic hardening
 
 elif HardeningModel == "KINEMATIC":
-    material_type = EvpMixtHHypoMaterial  # Material class for kinematic hardening
+    material_type = EvpMixtHHypoMaterial    # Material class for kinematic hardening
 
 elif HardeningModel == "MIXED":
-    material_type = EvpMixtHHypoMaterial  # Material class for mixed hardening
+    material_type = EvpMixtHHypoMaterial    # Material class for mixed hardening
 
 else:
     raise ValueError("Unknown hardening model: " + HardeningModel)
@@ -259,16 +260,16 @@ elif p['GeometryHypothesis']=="PLANESTRAIN":
 #-------------------------------------------------
 
 #LOAD:                                                              
-Trac = 290                          #Traction [MPa]
-Ncycle = 4                         #Number of cycles of loading/unloading
-Tcycle = 10.                        #Duration of one cycle [s]
+Trac = 290                          # Traction [MPa]
+Ncycle = 4                          # Number of cycles of loading/unloading
+Tcycle = 10.                        # Duration of one cycle [s]
 
 fct = PieceWiseLinearFunction()
 for i in range (0,Ncycle):
-    fct.setData(i*Tcycle+0.,0.) #POINT n°1
-    fct.setData(i*Tcycle+Tcycle/4.0,1.0)#POINT n°2
-    fct.setData(i*Tcycle+Tcycle*2.0/4.0,0.0)#POINT n°3
-    fct.setData(i*Tcycle+Tcycle*3.0/4.0,-1.0)#POINT n°4
+    fct.setData(i*Tcycle+0.,0.)                 #POINT n°1
+    fct.setData(i*Tcycle+Tcycle/4.0,1.0)        #POINT n°2
+    fct.setData(i*Tcycle+Tcycle*2.0/4.0,0.0)    #POINT n°3
+    fct.setData(i*Tcycle+Tcycle*3.0/4.0,-1.0)   #POINT n°4
     
 fct.setData((Ncycle - 1)*Tcycle+Tcycle*4.0/4.0,0)
 
