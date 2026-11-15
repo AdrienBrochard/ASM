@@ -27,7 +27,7 @@ p['Nx'] = 1                             #Nb of elements in the x direction
 p['Ny'] = 1                             #Nb of elements in the y direction
 p['Nz'] = 1                             #Nb of elements in the z direction
 #TIME:
-p['dT'] = 0.1                           #Maximum time step                     
+p['dT'] = 0.01                           #Maximum time step                  
 
 ###########################################
 # END OF DEFINITION OF THE PARAMETERS     #
@@ -135,8 +135,8 @@ Young = 205E3                       # Young's Modulus
 Nu = 0.3                            # Poisson ratio
 
 # HARDENING MODEL SELECTION:
-HardeningModel = "PERFECTLY_PLASTIC"
-# Options: "PERFECTLY_PLASTIC", "ISOTROPIC", "KINEMATIC", "MIXED"
+HardeningModel = "NL_KINEMATIC"
+# Options: "PERFECTLY_PLASTIC", "ISOTROPIC", "KINEMATIC", "MIXED", "NL_KINEMATIC"
 
 SigmaY_0 = 200.0                    # Elastic limit of virgin material
 SigmaY_inf = 300.0                  # Saturation stress for isotropic hardening
@@ -145,6 +145,7 @@ theta = 0.2                         # Partition coefficient for mixed hardening 
 
 h_i = theta * h                     # Isotropic hardening parameter
 h_k = (1 - theta) * h               # Kinematic hardening parameter
+eta_k = 100                         # Dynamic recovery parameter (non-linear hardening)
 
 
 # MATERIAL DEFINITION:
@@ -161,6 +162,9 @@ elif HardeningModel == "KINEMATIC":
 
 elif HardeningModel == "MIXED":
     material_type = EvpMixtHHypoMaterial    # Material class for mixed hardening
+
+elif HardeningModel == "NL_KINEMATIC":
+    material_type = EvpMixtHHypoMaterial    # Material class for non-linear kinematic hardening only
 
 else:
     raise ValueError("Unknown hardening model: " + HardeningModel)
@@ -212,6 +216,21 @@ elif HardeningModel == "MIXED":
     # Association with the material
     material1.put(KH_NUMS, [2])
 
+elif HardeningModel == "NL_KINEMATIC":
+
+    # Yield stress law (no isotropic hardening)
+    lawset1 = lawset.define(1, LinearIsotropicHardening)
+    lawset1.put(IH_SIGEL, SigmaY_0)
+    lawset1.put(IH_H, 0.0)
+
+    # Armstrong-Frederick nonlinear kinematic hardening
+    lawset2 = lawset.define(2, ArmstrongFrederickKinematicHardening)
+    lawset2.put(KH_H, h)
+    lawset2.put(KH_B, eta_k)
+
+    # Association with the material
+    material1.put(KH_NUMS, [2])
+
 
 
 
@@ -260,10 +279,9 @@ elif p['GeometryHypothesis']=="PLANESTRAIN":
 #-------------------------------------------------
 
 #LOAD:                                                              
-Trac = 290                          # Traction [MPa]
-Ncycle = 4                          # Number of cycles of loading/unloading
-Tcycle = 10.                        # Duration of one cycle [s]
-
+Trac = 290                          #Traction [MPa]
+Ncycle = 8                         #Number of cycles of loading/unloading
+Tcycle = 3.                        #Duration of one cycle [s]
 fct = PieceWiseLinearFunction()
 for i in range (0,Ncycle):
     fct.setData(i*Tcycle+0.,0.)                 #POINT n°1
@@ -376,4 +394,3 @@ winc4 = VizWin()
 winc4.add(dataCurveSet4)
 metafor.addObserver(winc4)
 metafor.addObserver(winc4)
-
