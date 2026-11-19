@@ -1,0 +1,396 @@
+#################################################
+#   Source file for the ASM project             #
+#                                               #
+#################################################.
+
+from wrap import *                        
+
+metafor = Metafor()
+domain = metafor.getDomain()
+
+def getMetafor(p={}): 
+    return metafor
+    
+###########################################
+# BEGIN OF DEFINITION OF THE PARAMETERS   #
+###########################################
+
+#Remark: The units must be consistent!
+#Here, lengths in [mm] ; E in [MPa] and Mass in [Tons]
+
+#GEOMETRY:
+p= {} 
+p['GeometryHypothesis'] = "PLANESTRESS" #PLANESTRESS or "PLANESTRAIN" ; you need to implement PLANESTRAIN yourself! 
+p['EdgeSize'] = 80                     #Length of the cube
+#MESH:    
+p['Nx'] = 1                             #Nb of elements in the x direction
+p['Ny'] = 1                             #Nb of elements in the y direction
+p['Nz'] = 1                             #Nb of elements in the z direction
+#TIME:
+p['dT'] = 0.01                           #Maximum time step                  
+
+###########################################
+# END OF DEFINITION OF THE PARAMETERS     #
+###########################################
+
+#2.0 GEOMETRY
+#===========
+geometry = domain.getGeometry() 
+geometry.setDim3D()  
+
+#2.1 Points
+#----------
+pointset = geometry.getPointSet()                               
+
+pointset.define(1,0.,0.,0.)                                         #         8_______________7 
+pointset.define(2,p['EdgeSize'],0.,0.)                              #         /.             /| 
+pointset.define(3,p['EdgeSize'],p['EdgeSize'],0.)                   #        / .            / | 
+pointset.define(4,0.,p['EdgeSize'],0.)                              #       /  .           /  |  
+pointset.define(5,0.,0.,p['EdgeSize'])                              #    4 /__ .__________/3  | 
+pointset.define(6,p['EdgeSize'],0.,p['EdgeSize'])                   #     |    .          |   |  
+pointset.define(7,p['EdgeSize'],p['EdgeSize'],p['EdgeSize'])        #     |   5...........|...|6  
+pointset.define(8,0.,p['EdgeSize'],p['EdgeSize'])                   #     |   .           |   /   
+                                                                    #     |  .            |  /       
+#2.2 Curves                                                         #     | .             | /           
+#-----------                                                        #     |.______________|/            
+curveset = geometry.getCurveSet()                                   #     1               2
+
+curveset.add( Line( 1, pointset( 1), pointset(2) ))                 #                
+curveset.add( Line( 2, pointset( 2), pointset(3) ))                 #          _______________
+curveset.add( Line( 3, pointset( 3), pointset(4) ))                 #         /.     11      /|
+curveset.add( Line( 4, pointset( 4), pointset(1) ))                 #       8/ .           7/ |
+curveset.add( Line( 5, pointset( 1), pointset(5) ))                 #       /  .12         /  |10
+curveset.add( Line( 6, pointset( 2), pointset(6) ))                 #      /__ .____3_____/   |
+curveset.add( Line( 7, pointset( 3), pointset(7) ))                 #     |    .          |   |
+curveset.add( Line( 8, pointset( 4), pointset(8) ))                 #     |    ...........|...| 
+curveset.add( Line( 9, pointset( 5), pointset(6) ))                 #    4|   .      9    |2  /
+curveset.add( Line( 10, pointset( 6), pointset(7) ))                #     |  .5           |  /6
+curveset.add( Line( 11, pointset( 7), pointset(8) ))                #     | .             | /
+curveset.add( Line( 12, pointset( 8), pointset(5) ))                #     |.______________|/
+                                                                    #             1         
+#2.3 Wires
+#------------
+wireset = geometry.getWireSet()                              
+
+wireset.add( Wire(1, [curveset(1), curveset(2), curveset(3), curveset(4)]) )        # Front
+wireset.add( Wire(2, [curveset(9), curveset(10), curveset(11), curveset(12)]) )     # Back
+wireset.add( Wire(3, [curveset(1), curveset(6), curveset(9), curveset(5)]) )        # Bottom
+wireset.add( Wire(4, [curveset(2), curveset(7), curveset(10), curveset(6)]) )       # Right
+wireset.add( Wire(5, [curveset(3), curveset(7), curveset(11), curveset(8)]) )       # Top
+wireset.add( Wire(6, [curveset(4), curveset(8), curveset(12), curveset(5)]) )       # Left
+
+#2.4 Sides
+#-------------------
+sideset = geometry.getSideSet()                              
+
+sideset.add( Side(1,[wireset(1)]) )     # Front                          
+sideset.add( Side(2,[wireset(2)]) )     # Back                     
+sideset.add( Side(3,[wireset(3)]) )     # Bottom                     
+sideset.add( Side(4,[wireset(4)]) )     # Right                     
+sideset.add( Side(5,[wireset(5)]) )     # Top                     
+sideset.add( Side(6,[wireset(6)]) )     # Left                     
+
+#2.5 Skins
+#-------------------
+skinset = geometry.getSkinSet()
+
+skinset.add( Skin(1,[sideset(1),sideset(2),sideset(3),sideset(4),sideset(5),sideset(6)]))                         
+
+#2.6 Volume
+#-------------------
+volumeset = geometry.getVolumeSet()
+
+volumeset.add(Volume(1,[skinset(1)]))                        
+
+#3. MESH
+#===========
+
+#3.1 Meshing the lines:
+#-------------------
+for i in [1, 3, 9, 11]:
+    SimpleMesher1D(curveset(i)).execute(p['Nx'])                    
+for i in [2, 4, 10, 12]:
+    SimpleMesher1D(curveset(i)).execute(p['Ny'])                 
+for i in [5, 6, 7, 8]:
+    SimpleMesher1D(curveset(i)).execute(p['Nz'])                    
+
+#3.2 Meshing the Sides:
+#-------------------
+for i in range(1,7):
+    TransfiniteMesher2D(sideset(i)).execute(True, 0)
+
+#3.3 Meshing the Volume:
+#-------------------
+TransfiniteMesher3D(volumeset(1)).execute(True)
+   
+#4.0 MATERIALS
+#===========
+
+############################################################
+# BEGIN OF DEFINITION OF THE MATERIALS AND MATERIAL LAWS   #
+############################################################ 
+
+Density = 7.85E-9                   # Density
+Young = 205E3                       # Young's Modulus
+Nu = 0.3                            # Poisson ratio
+
+# HARDENING MODEL SELECTION:
+HardeningModel = "ISOTROPIC"
+# Options: "PERFECTLY_PLASTIC", "ISOTROPIC", "KINEMATIC", "MIXED", "NL_KINEMATIC"
+
+SigmaY_0 = 200.0                    # Elastic limit of virgin material
+SigmaY_inf = 300.0                  # Saturation stress for isotropic hardening
+h = 30000.0                         # Total hardening parameter
+theta = 0.2                         # Partition coefficient for mixed hardening (0 <= theta <= 1)
+
+h_i = theta * h                     # Isotropic hardening parameter
+h_k = (1 - theta) * h               # Kinematic hardening parameter
+eta_k = 300                         # Dynamic recovery parameter (non-linear hardening)
+
+
+# MATERIAL DEFINITION:
+materset = domain.getMaterialSet()
+
+if HardeningModel == "PERFECTLY_PLASTIC":
+    material_type = EvpIsoHHypoMaterial     # Material class for no hardening
+
+elif HardeningModel == "ISOTROPIC":
+    material_type = EvpIsoHHypoMaterial     # Material class for isotropic hardening
+
+elif HardeningModel == "KINEMATIC":
+    material_type = EvpMixtHHypoMaterial    # Material class for kinematic hardening
+
+elif HardeningModel == "MIXED":
+    material_type = EvpMixtHHypoMaterial    # Material class for mixed hardening
+
+elif HardeningModel == "NL_KINEMATIC":
+    material_type = EvpMixtHHypoMaterial    # Material class for non-linear kinematic hardening only
+
+else:
+    raise ValueError("Unknown hardening model: " + HardeningModel)
+
+material1 = materset.define(1, material_type)
+
+material1.put(MASS_DENSITY, Density)
+material1.put(ELASTIC_MODULUS, Young)
+material1.put(POISSON_RATIO, Nu)
+material1.put(YIELD_NUM, 1)
+
+
+# HARDENING LAW DEFINITION:
+lawset = domain.getMaterialLawSet()
+
+if HardeningModel == "PERFECTLY_PLASTIC":
+    lawset1 = lawset.define(1, LinearIsotropicHardening)
+    lawset1.put(IH_SIGEL, SigmaY_0)
+    lawset1.put(IH_H, 0.0)
+
+elif HardeningModel == "ISOTROPIC":
+    lawset1 = lawset.define(1, LinearIsotropicHardening)
+    lawset1.put(IH_SIGEL, SigmaY_0)
+    lawset1.put(IH_H, h)
+
+elif HardeningModel == "KINEMATIC":
+
+    # Yield stress law
+    lawset1 = lawset.define(1, LinearIsotropicHardening)
+    lawset1.put(IH_SIGEL, SigmaY_0)
+    lawset1.put(IH_H, 0.0)
+
+    # Kinematic hardening law
+    lawset2 = lawset.define(2, DruckerPragerKinematicHardening)
+    lawset2.put(KH_H, h)
+
+    # Association with the material
+    material1.put(KH_NUMS, [2])
+
+elif HardeningModel == "MIXED":
+    lawset1 = lawset.define(1, LinearIsotropicHardening)
+    lawset1.put(IH_SIGEL, SigmaY_0)
+    lawset1.put(IH_H, h_i)
+
+    # Kinematic hardening law
+    lawset2 = lawset.define(2, DruckerPragerKinematicHardening)
+    lawset2.put(KH_H, h_k)
+        
+    # Association with the material
+    material1.put(KH_NUMS, [2])
+
+elif HardeningModel == "NL_KINEMATIC":
+
+    # Yield stress law (no isotropic hardening)
+    lawset1 = lawset.define(1, LinearIsotropicHardening)
+    lawset1.put(IH_SIGEL, SigmaY_0)
+    lawset1.put(IH_H, 0.0)
+
+    # Armstrong-Frederick nonlinear kinematic hardening
+    lawset2 = lawset.define(2, ArmstrongFrederickKinematicHardening)
+    lawset2.put(KH_H, h)
+    lawset2.put(KH_B, eta_k)
+
+    # Association with the material
+    material1.put(KH_NUMS, [2])
+
+
+
+
+############################################################
+# END OF DEFINITION OF THE MATERIALS AND MATERIAL LAWS     #
+############################################################ 
+      
+#5.0 ELEMENTS
+#===========================================
+
+#5.1 Definition of element properties
+#-----------------------------------------------------------
+prp1 = ElementProperties (Volume3DElement)                     
+prp1.put (MATERIAL, 1)                          # Number of the material used                                  
+prp1.put (CAUCHYMECHVOLINTMETH,VES_CMVIM_STD)   
+
+
+#5.2 Generating elements on the mesh
+#------------------------------------------------------------
+app = FieldApplicator(1)                                       
+app.push(volumeset(1))                                           
+app.addProperty(prp1)                                          
+domain.getInteractionSet().add(app)                            
+
+
+#6. BOUNDARY CONDITIONS
+#============ 
+
+loadingset = domain.getLoadingSet() 
+
+if p['GeometryHypothesis']=="PLANESTRESS":
+    loadingset.define(sideset(1),Field1D(TZ,RE),0.)                     
+    loadingset.define(sideset(3),Field1D(TY,RE),0.)                     
+    loadingset.define(sideset(6),Field1D(TX,RE),0.)                     
+    
+elif p['GeometryHypothesis']=="PLANESTRAIN":
+    loadingset.define(sideset(1),Field1D(TZ,RE),0.)                     
+    loadingset.define(sideset(3),Field1D(TY,RE),0.)                     
+    loadingset.define(sideset(6),Field1D(TX,RE),0.)
+    # Plane strain condition
+    loadingset.define(sideset(2),Field1D(TZ,RE),0.)
+    
+#7. LOADS
+#=============
+# 7.1 Definition of the loading function
+#-------------------------------------------------
+
+#LOAD:                                                              
+Trac = 290                          #Traction [MPa]
+Ncycle = 8                         #Number of cycles of loading/unloading
+Tcycle = 3.                        #Duration of one cycle [s]
+fct = PieceWiseLinearFunction()
+for i in range (0,Ncycle):
+    fct.setData(i*Tcycle+0.,0.)                 #POINT n°1
+    fct.setData(i*Tcycle+Tcycle/4.0,1.0)        #POINT n°2
+    fct.setData(i*Tcycle+Tcycle*2.0/4.0,0.0)    #POINT n°3
+    fct.setData(i*Tcycle+Tcycle*3.0/4.0,-1.0)   #POINT n°4
+    
+fct.setData((Ncycle - 1)*Tcycle+Tcycle*4.0/4.0,0)
+
+
+#########################################
+# IMPLEMENT A DIFFERENT LOADING FCT HERE#
+#########################################
+
+material2 = materset.define(2, PressureMaterial)
+material2.put(PRESSURE,  Trac)
+material2.depend(PRESSURE, fct, Field1D(TM,RE)) # To apply your new function, you can put it instead of "fct" here
+
+prp2 = ElementProperties(Pressure3DElement)                    
+prp2.put(MATERIAL,  2)                             
+
+    
+#7.3 Generating the pressure element on the mesh
+#---------------------------------------------------------------------
+trac = LoadingInteraction(2)                                    
+trac.push(sideset(4))                                           
+trac.addProperty(prp2)                                          
+domain.getInteractionSet().add(trac)                         
+
+#8. Integration Scheme
+#========================
+
+#8.1 Gestion des pas de temps
+#-----------------------------
+tsm = metafor.getTimeStepManager()                             
+tsm.setInitialTime(0.0,   p['dT'])                                  
+tsm.setNextTime(Ncycle*Tcycle, 0,  p['dT'])                                    
+
+#9. Archiving
+#============
+node_id = 7
+
+valuesmanager = metafor.getValuesManager()                                                  #Access Values Manager
+
+valuesmanager.add(1, MiscValueExtractor(metafor,EXT_T),'time')                              #Archive the time(EXT_T) in a "time.ascii" file
+
+#Stress
+valuesmanager.add(2, IFNodalValueExtractor(pointset(node_id), IF_SIG_XX),'Sigma_XX' )
+valuesmanager.add(3, IFNodalValueExtractor(pointset(node_id), IF_SIG_YY),'Sigma_YY' )
+valuesmanager.add(4, IFNodalValueExtractor(pointset(node_id), IF_SIG_ZZ),'Sigma_ZZ' )
+valuesmanager.add(5, IFNodalValueExtractor(pointset(node_id), IF_EVMS),'SigmaVM' )
+valuesmanager.add(6, IFNodalValueExtractor(pointset(node_id), IF_YIELD_STRESS),'Sigma_Yield' )
+
+#Strain
+valuesmanager.add(7, IFNodalValueExtractor(pointset(node_id), IF_EPL),'EPL' )
+valuesmanager.add(8, IFNodalValueExtractor(pointset(node_id), IF_NAT_STRAIN_XX),'E_XX' )
+valuesmanager.add(9, IFNodalValueExtractor(pointset(node_id), IF_NAT_STRAIN_YY),'E_YY' )
+valuesmanager.add(10, IFNodalValueExtractor(pointset(node_id), IF_NAT_STRAIN_ZZ),'E_ZZ' )
+
+#Backstress
+valuesmanager.add(11, IFNodalValueExtractor(pointset(node_id), IF_ALP_XX),'A_XX' )
+valuesmanager.add(12, IFNodalValueExtractor(pointset(node_id), IF_ALP_YY),'A_YY' )
+valuesmanager.add(13, IFNodalValueExtractor(pointset(node_id), IF_ALP_ZZ),'A_ZZ' )
+
+#10. Visualisation of curves in real time (not necessary but useful)
+#=====================================================
+
+#Stress
+dataCurveSX = VectorDataCurve(1, valuesmanager.getDataVector(1), valuesmanager.getDataVector(2),'Sigma_XX')
+dataCurveSY = VectorDataCurve(2, valuesmanager.getDataVector(1), valuesmanager.getDataVector(3),'Sigma_YY')
+dataCurveSZ = VectorDataCurve(3, valuesmanager.getDataVector(1), valuesmanager.getDataVector(4),'Sigma_ZZ')
+dataCurveSVM = VectorDataCurve(4, valuesmanager.getDataVector(1), valuesmanager.getDataVector(5),'Sigma_VM')
+dataCurveSYield = VectorDataCurve(5, valuesmanager.getDataVector(1), valuesmanager.getDataVector(6),'Sigma_Yield')
+
+dataCurveSet2 = DataCurveSet()
+dataCurveSet2.add(dataCurveSX)
+dataCurveSet2.add(dataCurveSY)
+dataCurveSet2.add(dataCurveSZ)
+dataCurveSet2.add(dataCurveSVM)
+dataCurveSet2.add(dataCurveSYield)
+winc2 = VizWin()
+winc2.add(dataCurveSet2)
+metafor.addObserver(winc2)
+
+#Strain
+dataCurveDEPL = VectorDataCurve(6, valuesmanager.getDataVector(1), valuesmanager.getDataVector(7),'E_PL')
+dataCurveDX = VectorDataCurve(7, valuesmanager.getDataVector(1), valuesmanager.getDataVector(8),'E_XX')
+dataCurveDY = VectorDataCurve(8, valuesmanager.getDataVector(1), valuesmanager.getDataVector(9),'E_YY')
+dataCurveDZ = VectorDataCurve(9, valuesmanager.getDataVector(1), valuesmanager.getDataVector(10),'E_ZZ')
+
+dataCurveSet3 = DataCurveSet()
+dataCurveSet3.add(dataCurveDX)
+dataCurveSet3.add(dataCurveDY)
+dataCurveSet3.add(dataCurveDZ)
+dataCurveSet3.add(dataCurveDEPL)
+winc3 = VizWin()
+winc3.add(dataCurveSet3)
+metafor.addObserver(winc3)
+
+#Backstress
+dataCurveAX = VectorDataCurve(10, valuesmanager.getDataVector(1), valuesmanager.getDataVector(11),'A_XX')
+dataCurveAY = VectorDataCurve(11, valuesmanager.getDataVector(1), valuesmanager.getDataVector(12),'A_YY')
+dataCurveAZ = VectorDataCurve(12, valuesmanager.getDataVector(1), valuesmanager.getDataVector(13),'A_ZZ')
+
+dataCurveSet4 = DataCurveSet()
+dataCurveSet4.add(dataCurveAX)
+dataCurveSet4.add(dataCurveAY)
+dataCurveSet4.add(dataCurveAZ)
+winc4 = VizWin()
+winc4.add(dataCurveSet4)
+metafor.addObserver(winc4)
+metafor.addObserver(winc4)
