@@ -20,7 +20,7 @@ def getMetafor(p={}):
 
 #GEOMETRY:
 p= {} 
-p['GeometryHypothesis'] = "PLANESTRESS" #PLANESTRESS or "PLANESTRAIN" ; you need to implement PLANESTRAIN yourself! 
+p['GeometryHypothesis'] = "PLANESTRAIN" #PLANESTRESS or "PLANESTRAIN" ; you need to implement PLANESTRAIN yourself! 
 p['EdgeSize'] = 80                     #Length of the cube
 #MESH:    
 p['Nx'] = 1                             #Nb of elements in the x direction
@@ -135,7 +135,7 @@ Young = 205E3                       # Young's Modulus
 Nu = 0.3                            # Poisson ratio
 
 # HARDENING MODEL SELECTION:
-HardeningModel = "ISOTROPIC"
+HardeningModel = "NL_KINEMATIC"
 # Options: "PERFECTLY_PLASTIC", "ISOTROPIC", "KINEMATIC", "MIXED", "NL_KINEMATIC"
 
 SigmaY_0 = 200.0                    # Elastic limit of virgin material

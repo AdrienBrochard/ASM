@@ -21,11 +21,20 @@ plt.rcParams.update({
 # SETTINGS
 # ============================================================
 
-FOLDERS = {
-    "Isotropic": Path(r"D:\ULiege\ASM\outputMetafor\Linear\PStrain_Iso"),
-    "Kinematic": Path(r"D:\ULiege\ASM\outputMetafor\Linear\PStrain_Kin"),
-    "Mixed": Path(r"D:\ULiege\ASM\outputMetafor\Linear\PStrain_Mixed"),
-}
+StateOfStress = "PLANESTRAIN"
+
+if(StateOfStress == "PLANESTRESS"):
+    FOLDERS = {
+        "Isotropic": Path(r"D:\ULiege\ASM\outputMetafor\Linear\PStress_Iso"),
+        "Kinematic": Path(r"D:\ULiege\ASM\outputMetafor\Linear\PStress_Kin"),
+        "Mixed": Path(r"D:\ULiege\ASM\outputMetafor\Linear\PStress_Mixed"),
+    }
+else:
+    FOLDERS = {
+        "Isotropic": Path(r"D:\ULiege\ASM\outputMetafor\Linear\PStrain_Iso"),
+        "Kinematic": Path(r"D:\ULiege\ASM\outputMetafor\Linear\PStrain_Kin"),
+        "Mixed": Path(r"D:\ULiege\ASM\outputMetafor\Linear\PStrain_Mixed"),
+    }
 
 DATA_PLOTS = Path(r"D:\ULiege\ASM\outputMetafor\Graphiques")
 
@@ -110,12 +119,13 @@ for model, folder in FOLDERS.items():
 
 def project_to_plane(sxx, syy, szz):
 
-    X = sxx - 0.5 * (syy + szz)
+    X = np.sqrt(2.0 / 3.0) * np.sqrt(3.0) / 2.0 * (szz - syy)
 
-    Y = np.sqrt(3.0) / 2.0 * (syy - szz)
+    Y = np.sqrt(2.0 / 3.0) * (
+        sxx - 0.5 * (syy + szz)
+    )
 
     return X, Y
-
 
 # ============================================================
 # EXTRACT DATA AT A GIVEN TIME
@@ -173,7 +183,7 @@ def plot_yield_surfaces(t, event_name):
     X0, Y0 = get_circle(
         0.0,
         0.0,
-        sigma_y_initial
+        np.sqrt(2.0 / 3.0) * sigma_y_initial
     )
 
     # --------------------------------------------------------
@@ -193,7 +203,7 @@ def plot_yield_surfaces(t, event_name):
         X, Y = get_circle(
             alpha_X,
             alpha_Y,
-            sigma_y
+            np.sqrt(2.0 / 3.0) * sigma_y
         )
 
         color = COLORS[model]
@@ -247,7 +257,7 @@ def plot_yield_surfaces(t, event_name):
             np.sqrt(alpha_X**2 + alpha_Y**2) + radius
         )
 
-    limit = 1.6 * max_extent
+    limit = 1.4 * max_extent
 
     # --------------------------------------------------------
     # Three stress axes (120 degrees)
@@ -256,9 +266,9 @@ def plot_yield_surfaces(t, event_name):
     axis_length = limit * 0.83
 
     axis_directions = [
-        (1.0, 0.0, r"$\sigma_{xx}$"),
-        (-0.5, np.sqrt(3)/2, r"$\sigma_{yy}$"),
-        (-0.5, -np.sqrt(3)/2, r"$\sigma_{zz}$"),
+        (0.0, 1.0, r"$\sigma_{xx}$"),
+        (-np.sqrt(3)/2, -0.5, r"$\sigma_{yy}$"),
+        (np.sqrt(3)/2, -0.5, r"$\sigma_{zz}$"),
     ]
 
     for dx, dy, label in axis_directions:
